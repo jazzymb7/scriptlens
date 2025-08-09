@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
 
 const TABLEHEADERS = [
   "Prescriber Type",
@@ -20,13 +21,14 @@ const TableComponent = ({
   pageCursors,
   setPageCursors,
 }) => {
+  const { setSelectedReport } = useAuth();
   const pageSize = 10;
   const totalPages = Math.ceil(totalCount / pageSize);
   const noPages = totalPages === 0;
 
   const handleEdit = (report) => {
+    setSelectedReport(report);
     document.getElementById("reports_modal").showModal();
-    // If you want to lift report state, handleReport should be passed or accessed from context
   };
 
   const handleNextPage = () => {
