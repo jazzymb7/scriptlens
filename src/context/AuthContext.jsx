@@ -16,6 +16,7 @@ const AuthProvider = ({ children }) => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageCursors, setPageCursors] = useState({ 1: null }); // Track cursor for each page
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,6 +49,7 @@ const AuthProvider = ({ children }) => {
       await handleLogout();
       setUser(null);
       setLoader(true);
+      resetPagination();
     } catch (error) {
       alert(error.message);
     }
@@ -55,6 +57,12 @@ const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = () => {
     return signInWithPopup(auth, googleProvider);
+  };
+
+  // Reset pagination state and page cursors
+  const resetPagination = () => {
+    setCurrentPage(1);
+    setPageCursors({ 1: null });
   };
 
   const value = {
@@ -70,6 +78,9 @@ const AuthProvider = ({ children }) => {
     setTotalCount,
     currentPage,
     setCurrentPage,
+    pageCursors,
+    setPageCursors,
+    resetPagination,
   };
   return (
     <ReportAuthContext.Provider value={value}>

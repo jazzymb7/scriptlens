@@ -1,5 +1,4 @@
 import React from "react";
-import { useAuth } from "../context/AuthContext";
 
 const TABLEHEADERS = [
   "Prescriber Type",
@@ -12,20 +11,53 @@ const TABLEHEADERS = [
   "",
 ];
 
-const TableComponent = ({ reports, handleDelete }) => {
-  const { handleReport, totalCount, currentPage, setCurrentPage } = useAuth();
+const TableComponent = ({
+  reports,
+  handleDelete,
+  totalCount,
+  currentPage,
+  setCurrentPage,
+  pageCursors,
+  setPageCursors,
+}) => {
   const pageSize = 10;
-
   const totalPages = Math.ceil(totalCount / pageSize);
   const noPages = totalPages === 0;
 
   const handleEdit = (report) => {
     document.getElementById("reports_modal").showModal();
-    handleReport(report);
+    // If you want to lift report state, handleReport should be passed or accessed from context
   };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Calculate displayed record numbers
+  const startRecord = (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalCount);
 
   return (
     <div className="h-400 overflow-x-auto">
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm text-gray-600">
+          Showing {reports.length > 0 ? startRecord : 0} to{" "}
+          {reports.length > 0 ? startRecord + reports.length - 1 : 0} of{" "}
+          {totalCount} entries
+        </div>
+        <div className="text-sm text-gray-600">
+          Page {totalCount > 0 ? currentPage : 0} of {totalPages}
+        </div>
+      </div>
+
       <table className="table">
         <thead>
           <tr>
@@ -35,9 +67,9 @@ const TableComponent = ({ reports, handleDelete }) => {
           </tr>
         </thead>
         <tbody>
-          {reports.length > 0 &&
-            reports.map((report, eventIndex) => (
-              <tr key={eventIndex}>
+          {reports.length > 0 ? (
+            reports.map((report, idx) => (
+              <tr key={idx}>
                 <td>{report.prescriberType}</td>
                 <td>{report.severity}</td>
                 <td>{report.timeForResolution}</td>
@@ -68,22 +100,37 @@ const TableComponent = ({ reports, handleDelete }) => {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+          ) : (
+            <tr>
+              <td
+                colSpan={TABLEHEADERS.length}
+                className="text-center py-8 text-gray-500"
+              >
+                No reports found
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
-      <div className="join justify-end mt-4 flex">
-        <button
-          className="join-item btn btn-outline mr-2"
-          disabled={noPages || currentPage === 1}
-        >
-          Previous
-        </button>
-        <button
-          className="join-item btn btn-outline"
-          disabled={noPages || currentPage === totalPages}
-        >
-          Next
-        </button>
+
+      <div className="flex justify-end items-center mt-4">
+        <div className="flex gap-2">
+          <button
+            className="btn btn-outline"
+            onClick={handlePreviousPage}
+            disabled={noPages || currentPage === 1}
+          >
+            Previous
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={handleNextPage}
+            disabled={noPages || currentPage >= totalPages}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -8,8 +8,9 @@ import {
   query,
   orderBy,
   limit,
-  where,
   setDoc,
+  where,
+  startAfter,
 } from "firebase/firestore";
 
 // const REPORTS_COLLECTION = import.meta.env.VITE_REACT_DATABASE;
@@ -42,7 +43,7 @@ export const getData = async (user, pageSize = 10, lastDocRef = null) => {
       collection(db, REPORTS_COLLECTION),
       where("email", "==", user.email),
       orderBy("createdAt", "desc"),
-      limit(pageSize + 1) // Get one extra to check if there are more
+      limit(pageSize) // Only pageSize docs
     );
 
     if (lastDocRef) {
@@ -51,7 +52,7 @@ export const getData = async (user, pageSize = 10, lastDocRef = null) => {
         where("email", "==", user.email),
         orderBy("createdAt", "desc"),
         startAfter(lastDocRef),
-        limit(pageSize + 1)
+        limit(pageSize) // Only pageSize docs
       );
     }
 
@@ -62,13 +63,18 @@ export const getData = async (user, pageSize = 10, lastDocRef = null) => {
     }
 
     const docs = querySnapshot.docs;
-    const hasMore = docs.length > pageSize;
-    const reports = docs.slice(0, pageSize).map((doc) => ({
+
+    const reports = docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    const lastDoc = docs[pageSize - 1] || null;
+    const lastDoc = docs[docs.length - 1] || null;
+
+    // To determine if there is a next page, you need to query the next page
+    // but this can be expensive. Alternatively:
+    // Just return hasMore = reports.length === pageSize
+    const hasMore = reports.length === pageSize;
 
     return { reports, hasMore, lastDoc };
   } catch (error) {

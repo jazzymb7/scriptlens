@@ -5,30 +5,70 @@ import { deleteData, getData, getUserReportCount } from "../firebase/utils";
 import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
-  const { logout, user, setTotalCount, totalCount } = useAuth();
+  const {
+    logout,
+    user,
+    totalCount,
+    setTotalCount,
+    currentPage,
+    setCurrentPage,
+    pageCursors,
+    setPageCursors,
+    resetPagination,
+  } = useAuth();
+
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
 
+  // Fetch reports when user or currentPage changes
   useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const data = await getData(user);
-        const totalCountData = await getUserReportCount(user);
-        setTotalCount(totalCountData);
-        setReports(data.reports);
-      } catch (error) {
-        alert("Error fetching Reports");
-      }
-    };
+    if (user) {
+      fetchReports();
+    }
+  }, [user, currentPage]);
 
-    fetchReports();
-  }, []);
+  const fetchReports = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const lastDoc = pageCursors[currentPage] || null;
+      const data = await getData(user, 10, lastDoc);
+      const count = await getUserReportCount(user);
+
+      setTotalCount(count);
+      setReports(data.reports);
+
+      // Update next page cursor only if there are more results
+      if (data.hasMore) {
+        setPageCursors((prev) => ({
+          ...prev,
+          [currentPage + 1]: data.lastDoc,
+        }));
+      }
+    } catch (error) {
+      alert("Error fetching Reports");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async (id) => {
     try {
       const result = await deleteData(id);
       alert(result.message);
-      let updatedReports = reports.filter((item) => item.id !== id);
+
+      // Update local state
+      const updatedReports = reports.filter((item) => item.id !== id);
       setReports(updatedReports);
+      setTotalCount(totalCount - 1);
+
+      // If the current page becomes empty and it's not the first page, go back
+      if (updatedReports.length === 0 && currentPage > 1) {
+        resetPagination();
+        fetchReports();
+      }
     } catch (error) {
       alert(error.message);
     }
@@ -43,23 +83,10 @@ const Home = () => {
   };
 
   const handleData = (data) => {
-    if (!data) {
-      return;
-    }
-    const existingIndex = reports.findIndex((item) => item.id === data.id);
-
-    let updatedReports;
-
-    if (existingIndex !== -1) {
-      updatedReports = [...reports];
-      updatedReports.splice(existingIndex, 1);
-      updatedReports.unshift(data);
-    } else {
-      updatedReports = [data, ...reports];
-      setTotalCount(totalCount + 1);
-    }
-
-    setReports(updatedReports);
+    // Reset to first page and refresh when a new report is added or edited
+    resetPagination();
+    fetchReports();
+    setTotalCount(totalCount + 1);
   };
 
   return (
@@ -94,17 +121,32 @@ const Home = () => {
       </div>
 
       <div className="flex justify-between">
-        <h1 className="text-4xl">Welcome {user.displayName}</h1>
+        <h1 className="text-4xl">Welcome {user?.displayName}</h1>
         <button
           className="btn bg-primaryBackground text-white hover:bg-hoverBackground"
-          onClick={() => handleModal()}
+          onClick={handleModal}
         >
           Add Report
         </button>
         <ModalComponent handleData={handleData} />
       </div>
+
       <div className="mt-10">
-        <TableComponent reports={reports} handleDelete={handleDelete} />
+        {loading ? (
+          <div className="flex justify-center items-center p-8">
+            <span className="loading loading-spinner loading-lg"></span>
+          </div>
+        ) : (
+          <TableComponent
+            reports={reports}
+            handleDelete={handleDelete}
+            totalCount={totalCount}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            pageCursors={pageCursors}
+            setPageCursors={setPageCursors}
+          />
+        )}
       </div>
     </div>
   );
